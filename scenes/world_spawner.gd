@@ -1,34 +1,70 @@
-# WorldSpawner - scatters pickable items around the world
+# WorldSpawner — scatters resources around player, respawns over time
 extends Node2D
 
 var _pickable_script: Script
+var _respawn_timer: float = 0.0
+var _spawned_items: int = 0
+const MAX_ITEMS: int = 60
+const RESPAWN_INTERVAL: float = 15.0
+const SPAWN_RADIUS: float = 600.0
 
 func _ready():
-	print("[Spawner] Loading script...")
 	_pickable_script = load("res://scenes/simple_pickable.gd")
-	if _pickable_script == null:
-		print("[Spawner] ERROR: Could not load simple_pickable.gd!")
-		return
+	_spawn_initial()
 
-	_spawn_scattered("berries", Color(0.9, 0.1, 0.2), 8)
-	_spawn_scattered("carrot", Color(1.0, 0.5, 0.1), 6)
-	_spawn_scattered("twigs", Color(0.5, 0.3, 0.15), 10)
-	_spawn_scattered("cut_grass", Color(0.3, 0.7, 0.2), 10)
-	_spawn_scattered("flint", Color(0.5, 0.5, 0.55), 6)
-	_spawn_scattered("rocks", Color(0.6, 0.6, 0.6), 5)
-	_spawn_scattered("log", Color(0.4, 0.25, 0.1), 5)
-	_spawn_scattered("raw_meat", Color(0.8, 0.15, 0.2), 3)
-	_spawn_scattered("gold_nugget", Color(1.0, 0.85, 0.1), 2)
+func _spawn_initial():
+	_spawn_type("berries", 8)
+	_spawn_type("carrot", 6)
+	_spawn_type("twigs", 12)
+	_spawn_type("cut_grass", 12)
+	_spawn_type("flint", 6)
+	_spawn_type("rocks", 5)
+	_spawn_type("log", 5)
+	_spawn_type("raw_meat", 3)
+	_spawn_type("gold_nugget", 2)
+	_spawned_items = 59
 
-	print("[Spawner] Done! Items scattered around the map")
+func _process(delta):
+	# Respawn items that were picked up
+	_respawn_timer += delta
+	if _respawn_timer < RESPAWN_INTERVAL: return
+	_respawn_timer = 0.0
 
-func _spawn_scattered(item_id: String, color: Color, count: int):
+	var player = _find_player()
+	if not player: return
+
+	# Count existing items
+	var count = 0
+	for child in get_children():
+		if child.is_in_group("Pickable"): count += 1
+
+	# Respawn a few if below max
+	if count < MAX_ITEMS:
+		var to_spawn = mini(8, MAX_ITEMS - count)
+		var types = ["twigs", "cut_grass", "berries", "carrot", "flint", "rocks"]
+		for i in range(to_spawn):
+			var t = types[randi() % types.size()]
+			var angle = randf() * TAU
+			var dist = randf_range(100, SPAWN_RADIUS)
+			var pos = player.global_position + Vector2(cos(angle), sin(angle)) * dist
+			_spawn_one(t, pos)
+
+func _spawn_type(item_id: String, count: int):
+	var player = _find_player()
+	var center = player.global_position if player else Vector2(640, 360)
 	for i in range(count):
-		var node = Area2D.new()
-		node.collision_layer = 2
-		node.collision_mask = 2
-		node.position = Vector2(randf_range(200, 1080), randf_range(100, 620))
-		node.set_script(_pickable_script)
-		node.item_id = item_id
-		node.item_color = color
-		add_child(node)
+		var pos = center + Vector2(randf_range(-SPAWN_RADIUS, SPAWN_RADIUS), randf_range(-SPAWN_RADIUS, SPAWN_RADIUS))
+		_spawn_one(item_id, pos)
+
+func _spawn_one(item_id: String, pos: Vector2):
+	var node = Area2D.new()
+	node.collision_layer = 2; node.collision_mask = 2
+	node.position = pos
+	node.set_script(_pickable_script)
+	node.item_id = item_id
+	add_child(node)
+
+func _find_player() -> Node:
+	var p = get_tree().root.find_children("Player", "", true, false)
+	if p.size() > 0: return p[0]
+	return null

@@ -9,6 +9,11 @@ var _attack_cooldown: float = 0.0
 const ATTACK_CD: float = 0.4
 var _attack_slash: float = 0.0
 
+# Strategic mode
+var _camera: Camera2D
+var _move_target: Vector2
+var _has_target: bool = false
+
 # Animation
 var _anim_timer: float = 0.0
 var _anim_frame: int = 0
@@ -32,62 +37,76 @@ func _ready():
 
 func _sprite_load(path: String):
 	var full = "res://assets/sprites/" + path
-	if ResourceLoader.exists(full): _sprite.texture = load(full)
+	if ResourceLoader.exists(full):
+		_sprite.texture = load(full)
+		# Normalize scale based on texture size (target: ~64px)
+		if _sprite.texture:
+			var ts = _sprite.texture.get_size()
+			var s = 64.0 / max(ts.x, ts.y)
+			_sprite.scale.y = s
+			_sprite.scale.x = -s if _facing_right else s
 
 func _draw():
 	if _sprite.texture == null:
 		draw_circle(Vector2.ZERO, 24.0, Color(0.25, 0.70, 0.30))
 	if _attack_slash > 0:
 		var d = _last_direction; if d == Vector2.ZERO: d = Vector2(1 if _facing_right else -1, 0)
-		d = d.normalized()
-		var a = _attack_slash / 0.15
+		d = d.normalized(); var a = _attack_slash / 0.15
 		draw_arc(d * 18, 35.0, d.angle() - 0.5, d.angle() + 0.5, 8, Color(1,1,1,a*0.7), 3.0)
 
 func _physics_process(delta: float):
-	var dir = Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
-	_moving = dir != Vector2.ZERO
+	if _camera == null:
+		var cams = get_tree().root.find_children("*", "Camera2D", true, false)
+		if cams.size() > 0: _camera = cams[0]
 
-	if _moving:
-		velocity = dir.normalized() * move_speed; _last_direction = dir
-		if dir.x != 0: _facing_right = dir.x > 0
-		# Animation direction
-		var ax = abs(dir.x); var ay = abs(dir.y)
-		if ay > ax * 2: _anim_dir = "up"
-		elif ax > ay * 2: _anim_dir = "side"
-		elif dir.y < 0: _anim_dir = "up_side"
-		else: _anim_dir = "down_side"
-		# Cycle frames
-		_anim_timer += delta
-		if _anim_timer > 0.25: _anim_timer = 0; _anim_frame = (_anim_frame + 1) % 4
-		_try_walk_frame()
+	var is_strat = _camera != null and _camera.has_method("is_strategic") and _camera.is_strategic()
+
+	if is_strat:
+		if _has_target:
+			var to = _move_target - global_position
+			if to.length() < 15: _has_target = false; _moving = false; velocity = Vector2.ZERO
+			else: _moving = true; velocity = to.normalized() * move_speed * 1.5; _last_direction = to.normalized(); if to.x != 0: _facing_right = to.x > 0
+		else: _moving = false; velocity = Vector2.ZERO
 	else:
-		velocity = Vector2.ZERO
-		_anim_timer = 0; _anim_frame = 0
-		_try_stand_frame()
+		_has_target = false
+		var dx = (1 if Input.is_action_pressed("move_right") else 0) - (1 if Input.is_action_pressed("move_left") else 0)
+		var dy = (1 if Input.is_action_pressed("move_down") else 0) - (1 if Input.is_action_pressed("move_up") else 0)
+		var dir = Vector2(dx, dy)
+		_moving = dir != Vector2.ZERO
+		if _moving: velocity = dir.normalized() * move_speed; _last_direction = dir.normalized(); if dir.x != 0: _facing_right = dir.x > 0
+		else: velocity = Vector2.ZERO
 
-	if _sprite: _sprite.scale.x = -1 if _facing_right else 1
+	# Animation
+	if _moving:
+		var ax2 = abs(_last_direction.x); var ay2 = abs(_last_direction.y)
+		if ay2 > ax2 * 2: _anim_dir = "up"
+		elif ax2 > ay2 * 2: _anim_dir = "side"
+		elif _last_direction.y < 0: _anim_dir = "up_side"
+		else: _anim_dir = "down_side"
+		_anim_timer += delta
+		if _anim_timer > 0.25: _anim_timer = 0; _anim_frame = (_anim_frame + 1) % 3
+		var p = "player_%s_walk%d.png" % [_anim_dir, _anim_frame + 1]
+		if not ResourceLoader.exists("res://assets/sprites/" + p): p = "player_%s.png" % _anim_dir
+		_sprite_load(p)
+	else:
+		_anim_timer = 0; _anim_frame = 0
+		var p = "player_%s.png" % _anim_dir
+		if not ResourceLoader.exists("res://assets/sprites/" + p): p = "player_down.png"
+		_sprite_load(p)
+
 	_attack_cooldown = maxf(0, _attack_cooldown - delta)
 	if _attack_slash > 0: _attack_slash -= delta
 	move_and_slide(); queue_redraw()
 
-func _try_walk_frame():
-	var path = "player_%s_walk%d.png" % [_anim_dir, _anim_frame + 1]
-	if not ResourceLoader.exists("res://assets/sprites/" + path):
-		path = "player_%s.png" % _anim_dir  # fallback: standing
-	_sprite_load(path)
-
-func _try_stand_frame():
-	var path = "player_%s.png" % _anim_dir
-	if not ResourceLoader.exists("res://assets/sprites/" + path):
-		path = "player_down.png"
-	_sprite_load(path)
-
 func _input(event: InputEvent):
+	# Mouse: click-to-move (strategic) or attack (action)
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _camera and _camera.has_method("is_strategic") and _camera.is_strategic():
+			_move_target = get_global_mouse_position(); _has_target = true
+		else: _do_attack()
+
 	if event.is_action_pressed("interact"): _try_interact()
 	if event.is_action_pressed("attack"): _do_attack()
-	if event is InputEventKey and event.pressed and event.keycode == KEY_F:
-		SurvivalManager.eat(InventoryManager.get_selected_item()["item_id"])
-		InventoryManager.remove_item(InventoryManager.get_selected_item()["item_id"], 1)
 
 func _do_attack():
 	if _attack_cooldown > 0: return
@@ -103,5 +122,4 @@ func _do_attack():
 func _try_interact():
 	if action_area:
 		for area in action_area.get_overlapping_areas():
-			if area.is_in_group("Pickable") and area.has_method("pick_up"):
-				area.pick_up(); break
+			if area.is_in_group("Pickable") and area.has_method("pick_up"): area.pick_up(); break

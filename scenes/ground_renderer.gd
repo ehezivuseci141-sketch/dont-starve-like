@@ -1,8 +1,8 @@
 # Ground renderer - draws biome-colored background tiles
 extends Node2D
 
-var _tile_size: int = 64
-var _view_range: int = 12  # tiles visible in each direction
+var _tile_size: int = 96
+var _view_range: int = 10
 
 func _draw():
 	var player = _find_player()
