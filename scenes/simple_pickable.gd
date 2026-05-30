@@ -1,4 +1,4 @@
-# Simple pickable - draws colored circle, E to pick up
+# Pickable item with sprite texture
 extends Area2D
 
 var item_id: String = "twigs"
@@ -7,25 +7,44 @@ var _picked: bool = false
 
 func _ready():
 	add_to_group("Pickable")
+
+	# Collision
 	var shape = CircleShape2D.new()
-	shape.radius = 25.0
+	shape.radius = 16.0
 	var coll = CollisionShape2D.new()
 	coll.shape = shape
 	add_child(coll)
-	queue_redraw()
 
-func _draw():
-	draw_circle(Vector2.ZERO, 20.0, item_color)
-	draw_arc(Vector2.ZERO, 20.0, 0, TAU, 16, item_color.darkened(0.4), 2.0)
-	# Draw item name above
-	draw_string(ThemeDB.fallback_font, Vector2(-20, -28), ItemDB.get_item_name(item_id),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+	# Sprite
+	var sprite = Sprite2D.new()
+	var tex_path = "res://assets/sprites/%s.png" % item_id
+	if ResourceLoader.exists(tex_path):
+		sprite.texture = load(tex_path)
+	sprite.scale = Vector2(0.7, 0.7)
+	add_child(sprite)
+
+	# Name label (use a Label node)
+	var label = Label.new()
+	label.text = ItemDB.get_item_name(item_id)
+	label.position = Vector2(-16, -24)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.size = Vector2(32, 14)
+	add_child(label)
 
 func pick_up():
-	if _picked:
-		return
+	if _picked: return
 	var p = InventoryManager.add_item(item_id, 1)
 	if p > 0:
-		print("[Pickup] +1 %s" % ItemDB.get_item_name(item_id))
 		_picked = true
 		queue_free()
+
+func set_item(item: String, count: int = 1):
+	item_id = item
+	# Reload sprite
+	var sprite = get_node_or_null("Sprite2D")
+	if sprite:
+		var tex_path = "res://assets/sprites/%s.png" % item_id
+		if ResourceLoader.exists(tex_path):
+			sprite.texture = load(tex_path)

@@ -1,110 +1,126 @@
-# Hotbar - bottom inventory bar showing 5 slots
+# Hotbar - bottom bar with item sprites + selection border
 extends CanvasLayer
 
 var _slot_bgs: Array = []
+var _slot_sprites: Array = []
 var _slot_labels: Array = []
-const VISIBLE_SLOTS: int = 5
-const SLOT_SIZE: int = 56
+var _border: ColorRect
+var _sel_label: Label
+
+const SLOTS: int = 5
+const SIZE: int = 56
+const GAP: int = 6
 
 func _ready():
-	# Create hotbar background
+	var total_w = SLOTS * SIZE + (SLOTS + 1) * GAP
+	var sx = (DisplayServer.window_get_size().x - total_w) / 2
+	var sy = DisplayServer.window_get_size().y - SIZE - 24
+
+	# Background
 	var bg = ColorRect.new()
 	bg.color = Color(0.05, 0.05, 0.05, 0.7)
-	var total_w = VISIBLE_SLOTS * SLOT_SIZE + (VISIBLE_SLOTS + 1) * 6
-	bg.size = Vector2(total_w, SLOT_SIZE + 12)
-	bg.position = Vector2(
-		(DisplayServer.window_get_size().x - total_w) / 2,
-		DisplayServer.window_get_size().y - SLOT_SIZE - 22
-	)
+	bg.size = Vector2(total_w, SIZE + 16)
+	bg.position = Vector2(sx - GAP, sy - 8)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	# Create slot backgrounds
-	for i in range(VISIBLE_SLOTS):
-		var slot_bg = ColorRect.new()
-		slot_bg.color = Color(0.15, 0.12, 0.08, 0.9)
-		slot_bg.size = Vector2(SLOT_SIZE, SLOT_SIZE)
-		slot_bg.position = bg.position + Vector2(6 + i * (SLOT_SIZE + 6), 6)
-		add_child(slot_bg)
-		_slot_bgs.append(slot_bg)
+	# Selection border
+	_border = ColorRect.new()
+	_border.color = Color(1, 0.85, 0.3, 0.6)
+	_border.size = Vector2(SIZE + 4, SIZE + 4)
+	_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_border)
 
-		# Item count label
+	for i in range(SLOTS):
+		var x = sx + GAP + i * (SIZE + GAP)
+
+		var bg_rect = ColorRect.new()
+		bg_rect.color = Color(0.12, 0.1, 0.07, 0.9)
+		bg_rect.size = Vector2(SIZE, SIZE)
+		bg_rect.position = Vector2(x, sy)
+		bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bg_rect)
+		_slot_bgs.append(bg_rect)
+
+		var sprite = TextureRect.new()
+		sprite.size = Vector2(SIZE - 8, SIZE - 8)
+		sprite.position = Vector2(x + 4, sy + 4)
+		sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(sprite)
+		_slot_sprites.append(sprite)
+
 		var label = Label.new()
-		label.size = Vector2(SLOT_SIZE, SLOT_SIZE)
-		label.position = slot_bg.position
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 10)
+		label.position = Vector2(x + SIZE - 16, sy + SIZE - 16)
+		label.size = Vector2(16, 16)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		label.add_theme_font_size_override("font_size", 9)
+		label.add_theme_color_override("font_color", Color.WHITE)
 		add_child(label)
 		_slot_labels.append(label)
 
-	# Selection highlight
-	var highlight = ColorRect.new()
-	highlight.color = Color(1.0, 0.85, 0.3, 0.5)
-	highlight.size = Vector2(SLOT_SIZE + 4, SLOT_SIZE + 4)
-	highlight.position = bg.position + Vector2(4, 4)
-	highlight.name = "Highlight"
-	add_child(highlight)
-
-	# Selected slot indicator text
-	var sel_label = Label.new()
-	sel_label.position = bg.position + Vector2(0, -18)
-	sel_label.size = Vector2(total_w, 16)
-	sel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sel_label.add_theme_font_size_override("font_size", 12)
-	sel_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.8))
-	sel_label.name = "SelLabel"
-	add_child(sel_label)
+	# Selected item name
+	_sel_label = Label.new()
+	_sel_label.position = Vector2(sx, sy - 20)
+	_sel_label.size = Vector2(total_w, 16)
+	_sel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sel_label.add_theme_font_size_override("font_size", 12)
+	_sel_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.8))
+	add_child(_sel_label)
 
 func _process(_delta):
-	var highlight = get_node_or_null("Highlight")
-	var sel_label = get_node_or_null("SelLabel")
-
 	var sel = InventoryManager.selected_slot
 
-	# Update highlight position
-	if highlight and sel < VISIBLE_SLOTS:
-		var slot_bg = _slot_bgs[sel]
-		highlight.position = slot_bg.position - Vector2(2, 2)
+	# Move border
+	if sel < SLOTS:
+		var i = sel
+		var x = _slot_bgs[i].position.x - 2
+		var y = _slot_bgs[i].position.y - 2
+		_border.position = Vector2(x, y)
 
-	# Update each slot
-	for i in range(VISIBLE_SLOTS):
-		if i >= _slot_labels.size():
+	# Update slots
+	for i in range(SLOTS):
+		if i >= InventoryManager.slots.size():
 			break
-		var slot_data = {}
-		if i < InventoryManager.slots.size():
-			slot_data = InventoryManager.slots[i]
-
-		if slot_data.is_empty():
-			_slot_bgs[i].color = Color(0.15, 0.12, 0.08, 0.9)
+		var slot = InventoryManager.slots[i]
+		if slot.is_empty():
+			_slot_bgs[i].color = Color(0.12, 0.1, 0.07, 0.9)
+			_slot_sprites[i].texture = null
 			_slot_labels[i].text = ""
 		else:
-			# Color the slot by item type
-			var item = ItemDB.get_item(slot_data["item_id"])
-			var c = _item_color(slot_data["item_id"])
-			_slot_bgs[i].color = Color(c.r, c.g, c.b, 0.7)
-			_slot_labels[i].text = str(slot_data["amount"])
+			_slot_bgs[i].color = Color(0.18, 0.15, 0.1, 0.9)
+			var tex_path = "res://assets/sprites/%s.png" % slot["item_id"]
+			if ResourceLoader.exists(tex_path):
+				_slot_sprites[i].texture = load(tex_path)
+			else:
+				_slot_sprites[i].texture = null
+			_slot_labels[i].text = str(slot["amount"]) if slot["amount"] > 1 else ""
 
-	# Selected item name
-	if sel_label and sel >= 0 and sel < InventoryManager.slots.size():
-		var slot = InventoryManager.slots[sel]
-		if not slot.is_empty():
-			sel_label.text = "%s x%d  [F]Eat  [Q]Drop" % [
-				ItemDB.get_item_name(slot["item_id"]),
-				slot["amount"]
-			]
+	# Label
+	if sel < InventoryManager.slots.size():
+		var s = InventoryManager.slots[sel]
+		if not s.is_empty():
+			var dur_text = ""
+			if s.has("dur"):
+				dur_text = "  Dur:%d" % s["dur"]
+			_sel_label.text = "%s x%d%s  [F]Eat  [Q]Drop  [B]Place  %s" % [ItemDB.get_item_name(s["item_id"]), s["amount"], dur_text, _get_mode_text()]
 		else:
-			sel_label.text = "Empty  [E]Interact"
+			var mode = _get_mode_text()
+			_sel_label.text = "Empty  [E]Interact  [B]Place  " + mode
 
-func _item_color(item_id: String) -> Color:
-	if item_id == "berries": return Color(0.9, 0.2, 0.2)
-	if item_id == "carrot": return Color(1.0, 0.5, 0.1)
-	if item_id == "twigs": return Color(0.5, 0.3, 0.15)
-	if item_id == "cut_grass": return Color(0.3, 0.6, 0.2)
-	if item_id == "log": return Color(0.4, 0.25, 0.1)
-	if item_id == "rocks": return Color(0.6, 0.6, 0.6)
-	if item_id == "flint": return Color(0.5, 0.5, 0.55)
-	if item_id == "gold_nugget": return Color(1.0, 0.85, 0.1)
-	if item_id == "raw_meat": return Color(0.8, 0.15, 0.2)
-	if item_id == "spear": return Color(0.7, 0.7, 0.85)
-	if item_id == "axe": return Color(0.8, 0.7, 0.5)
-	return Color.GRAY
+func _get_mode_text() -> String:
+	var cams = get_tree().root.find_children("*", "Camera2D", true, false)
+	if cams.size() > 0 and cams[0].has_method("is_strategic"):
+		return "[STRATEGIC]" if cams[0].is_strategic() else "[ACTION]"
+	return ""
+
+func _input(event: InputEvent):
+	if event is InputEventMouseButton and event.pressed:
+		for i in range(_slot_labels.size()):
+			if i >= _slot_bgs.size(): break
+			var r = Rect2(_slot_bgs[i].position, _slot_bgs[i].size)
+			if r.has_point(event.position):
+				InventoryManager.select_slot(i)
+				return

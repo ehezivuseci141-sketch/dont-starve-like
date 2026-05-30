@@ -1,8 +1,8 @@
-# Spider enemy - wanders, chases at night, attacks
+# Spider enemy with sprite
 extends CharacterBody2D
 
-var hp: float = 30.0
-var max_hp: float = 30.0
+var hp: float = 15.0
+var max_hp: float = 15.0
 var speed: float = 80.0
 var attack_damage: float = 8.0
 var attack_cooldown: float = 1.5
@@ -10,29 +10,26 @@ var _attack_timer: float = 0.0
 var _state: int = 0
 var _wander_target: Vector2
 var _wander_timer: float = 0.0
+var _sprite: Sprite2D
+var _hp_bar_bg: ColorRect
+var _hp_bar_fill: ColorRect
 
 func _ready():
 	add_to_group("Enemy")
+	collision_layer = 2
+
 	var shape = CircleShape2D.new()
-	shape.radius = 24.0
+	shape.radius = 20.0
 	var coll = CollisionShape2D.new()
 	coll.shape = shape
 	add_child(coll)
-	_pick_new_wander()
-	queue_redraw()
 
-func _draw():
-	var body_c = Color(0.15, 0.08, 0.12)
-	if hp / max_hp < 0.5:
-		body_c = Color(0.35, 0.1, 0.1)
-	draw_circle(Vector2.ZERO, 22.0, body_c)
-	draw_arc(Vector2.ZERO, 22.0, 0, TAU, 16, Color.BLACK, 2.0)
-	draw_circle(Vector2(-8, -6), 4.0, Color(0.9, 0.1, 0.1))
-	draw_circle(Vector2(8, -6), 4.0, Color(0.9, 0.1, 0.1))
-	if hp < max_hp:
-		var bar_w = 40.0 * hp / max_hp
-		draw_rect(Rect2(-20, -30, 40, 4), Color.BLACK)
-		draw_rect(Rect2(-20, -30, bar_w, 4), Color.RED)
+	_sprite = Sprite2D.new()
+	if ResourceLoader.exists("res://assets/sprites/spider.png"):
+		_sprite.texture = load("res://assets/sprites/spider.png")
+	add_child(_sprite)
+
+	_pick_new_wander()
 
 func _physics_process(delta: float):
 	var player = _find_player()
@@ -42,7 +39,6 @@ func _physics_process(delta: float):
 	var dist = global_position.distance_to(player.global_position)
 	var is_night = DayNightCycle.is_nighttime()
 
-	# Leash: never go too far from player
 	if dist > 500.0:
 		var to_player = (player.global_position - global_position).normalized()
 		global_position = player.global_position - to_player * 400.0
@@ -71,12 +67,13 @@ func _physics_process(delta: float):
 		1:
 			var dir = (player.global_position - global_position).normalized()
 			velocity = dir * speed
+			# Flip sprite towards player
+			if _sprite: _sprite.scale.x = -1 if dir.x < 0 else 1
 		2:
 			velocity = Vector2.ZERO
 			if _attack_timer <= 0.0:
 				SurvivalManager.take_damage(attack_damage)
 				_attack_timer = attack_cooldown
-				print("[Spider] Hit! -8 HP")
 
 	move_and_slide()
 
@@ -86,7 +83,9 @@ func _pick_new_wander(around: Vector2 = Vector2.ZERO):
 
 func take_damage(amount: float):
 	hp -= amount
-	queue_redraw()
+	if _sprite: _sprite.modulate = Color.RED
+	await get_tree().create_timer(0.1).timeout
+	if _sprite: _sprite.modulate = Color.WHITE
 	if hp <= 0:
 		die()
 
@@ -101,7 +100,6 @@ func die():
 		loot.item_id = "raw_meat"
 		loot.item_color = Color(0.8, 0.15, 0.2)
 		get_parent().add_child(loot)
-	print("[Spider] Dead! Dropped raw meat")
 	queue_free()
 
 func _find_player() -> Node:

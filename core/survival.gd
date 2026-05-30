@@ -22,12 +22,14 @@ func _process(delta: float):
 	# Hunger always decays
 	modify_hunger(-_current_hunger_drain * delta)
 
-	# At night: sanity drain (darkness is scary)
+	# At night: darkness hurts unless near campfire
 	if DayNightCycle.is_nighttime():
-		modify_sanity(-NIGHT_SANITY_DRAIN * delta)
-	# During day: slow sanity recovery
+		if not _near_campfire():
+			modify_health(-1.5 * delta)  # darkness damages
+	# During day: slow recovery
 	elif DayNightCycle.is_daytime():
-		modify_sanity(0.3 * delta)
+		if health < HEALTH_MAX:
+			modify_health(0.2 * delta)
 
 	# Starvation damages health
 	if hunger <= 0:
@@ -78,6 +80,23 @@ func _on_season_changed(new_season: int):
 		_current_hunger_drain = HUNGER_DRAIN_WINTER
 	else:
 		_current_hunger_drain = HUNGER_DRAIN
+
+func _near_campfire() -> bool:
+	var player = _find_player()
+	if player == null: return false
+	for node in player.get_tree().root.find_children("*", "Node2D", true, false):
+		if node.is_in_group("Campfire") and node.has_method("is_near"):
+			if node.is_near(player.global_position):
+				return true
+	return false
+
+func _find_player() -> Node:
+	var tree = get_tree()
+	if tree:
+		var nodes = tree.root.find_children("Player", "", true, false)
+		if nodes.size() > 0:
+			return nodes[0]
+	return null
 
 func serialize() -> Dictionary:
 	return {"hunger": hunger, "health": health, "sanity": sanity, "current_hunger_drain": _current_hunger_drain}

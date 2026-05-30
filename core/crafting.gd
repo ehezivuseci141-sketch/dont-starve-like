@@ -43,6 +43,15 @@ func _register_all_recipes():
 		"result": {"item_id": "campfire", "amount": 1},
 		"station": "none"
 	})
+	# ==== 烹饪（需要火堆）====
+	_register({
+		"id": "cook_meat",
+		"name": "熟肉",
+		"ingredients": {"raw_meat": 1},
+		"result": {"item_id": "cooked_meat", "amount": 1},
+		"station": "campfire"
+	})
+
 	# ==== 需要科学机器 ====
 	_register({
 		"id": "craft_backpack",
@@ -82,10 +91,41 @@ func craft(recipe_id: String) -> bool:
 	for item_id in ingredients:
 		InventoryManager.remove_item(item_id, ingredients[item_id])
 
-	# 给成品
+	# 给成品 — 优先放进选中的槽位或快捷栏
 	var result = recipe["result"]
-	InventoryManager.add_item(result["item_id"], result["amount"])
+	var item_id = result["item_id"]
+	var amount = result["amount"]
 
+	# Build slot data (add durability for tools/weapons)
+	var slot_data = {"item_id": item_id, "amount": amount}
+	var item_def = ItemDB.get_item(item_id)
+	if item_def.has("durability"):
+		slot_data["dur"] = item_def["durability"]
+
+	# Try selected slot first
+	var sel = InventoryManager.selected_slot
+	if sel >= 0 and sel < InventoryManager.slots.size():
+		var slot = InventoryManager.slots[sel]
+		if slot.is_empty():
+			InventoryManager.slots[sel] = slot_data
+			print("合成完成: %s → 槽位 %d" % [recipe["name"], sel])
+			return true
+		elif slot["item_id"] == item_id:
+			var max_stack = item_def.get("stack_max", 40)
+			if slot["amount"] + amount <= max_stack:
+				slot["amount"] += amount
+				print("合成完成: %s → 槽位 %d (堆叠)" % [recipe["name"], sel])
+				return true
+
+	# Try first empty hotbar slot (0-4)
+	for i in range(5):
+		if InventoryManager.slots[i].is_empty():
+			InventoryManager.slots[i] = slot_data
+			print("合成完成: %s → 槽位 %d" % [recipe["name"], i])
+			return true
+
+	# Fallback: normal add
+	InventoryManager.add_item(item_id, amount)
 	print("合成完成: ", recipe["name"])
 	return true
 
