@@ -1,0 +1,113 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://scenes/hud.gd" id="2_hud"]
+[ext_resource type="Script" path="res://scenes/camera_follow.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scenes/world_spawner.gd" id="4_spawner"]
+[ext_resource type="Script" path="res://scenes/ground_renderer.gd" id="5_ground"]
+[ext_resource type="Script" path="res://scenes/night_overlay.gd" id="6_night"]
+[ext_resource type="Script" path="res://scenes/hotbar.gd" id="7_hotbar"]
+[ext_resource type="Script" path="res://scenes/enemy_spawner.gd" id="8_enemy"]
+[ext_resource type="Script" path="res://scenes/inventory_panel.gd" id="9_side"]
+
+[node name="Game" type="Node2D"]
+
+[node name="GroundRenderer" type="Node2D" parent="."]
+script = ExtResource("5_ground")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+enabled = true
+script = ExtResource("3_camera")
+
+[node name="WorldSpawner" type="Node2D" parent="."]
+script = ExtResource("4_spawner")
+
+[node name="EnemySpawner" type="Node2D" parent="."]
+script = ExtResource("8_enemy")
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+position = Vector2(640, 360)
+
+[node name="NightOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("6_night")
+
+[node name="SidePanel" type="CanvasLayer" parent="."]
+script = ExtResource("9_side")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="StatBars" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 260.0
+offset_bottom = 100.0
+
+[node name="HungerBar" type="ProgressBar" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 5.0
+offset_right = 250.0
+offset_bottom = 22.0
+max_value = 150.0
+value = 100.0
+tint_under = Color(0.8, 0.4, 0.1, 1)
+tint_progress = Color(0.9, 0.6, 0.2, 1)
+show_percentage = false
+
+[node name="HungerLabel" type="Label" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 5.0
+offset_right = 250.0
+offset_bottom = 22.0
+text = "Hunger"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 26.0
+offset_right = 250.0
+offset_bottom = 43.0
+max_value = 150.0
+value = 100.0
+tint_under = Color(0.5, 0.1, 0.1, 1)
+tint_progress = Color(0.9, 0.15, 0.15, 1)
+show_percentage = false
+
+[node name="HealthLabel" type="Label" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 26.0
+offset_right = 250.0
+offset_bottom = 43.0
+text = "Health"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TimeLabel" type="Label" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 250.0
+offset_bottom = 68.0
+text = "Day 1 | Morning"
+horizontal_alignment = 0
+vertical_alignment = 1
+
+[node name="WeatherLabel" type="Label" parent="HUD/StatBars"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 70.0
+offset_right = 250.0
+offset_bottom = 88.0
+text = "Sunny"
+horizontal_alignment = 0
+vertical_alignment = 1
+
+[node name="HUDController" type="Node" parent="HUD"]
+script = ExtResource("2_hud")
+
+[node name="Hotbar" type="CanvasLayer" parent="."]
+script = ExtResource("7_hotbar")

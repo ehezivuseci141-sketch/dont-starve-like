@@ -1,0 +1,18 @@
+# Godot 4
+.godot/
+*.import
+*.translation
+export/
+export_presets.cfg
+
+# 用户数据（存档）
+user/
+
+# 临时文件
+*.tmp
+*.log
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
