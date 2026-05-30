@@ -1,23 +1,20 @@
-# Enemy spawner - spawns spiders at night
+# Enemy spawner — spawns spiders at night, initial batch at start
 extends Node2D
 
 var _enemy_script: Script
-var _spider_count: int = 0
-var _max_spiders: int = 4
 var _spawned_tonight: bool = false
+var _max_spiders: int = 5
 
 func _ready():
 	_enemy_script = load("res://scenes/enemy.gd")
 	Signals.time_of_day_changed.connect(_on_time_changed)
-	# Initial spawn for testing
-	_spawn_spiders()
+	# Delay initial spawn to let player load
+	call_deferred("_spawn_spiders")
 
 func _on_time_changed(new_time: int):
 	if new_time == Enums.TimeOfDay.NIGHT:
 		_spawned_tonight = false
 		_spawn_spiders()
-	elif new_time == Enums.TimeOfDay.DAY:
-		_spawned_tonight = false
 
 func _spawn_spiders():
 	if _spawned_tonight:
@@ -28,7 +25,6 @@ func _spawn_spiders():
 	if player == null:
 		return
 
-	# Count existing spiders
 	var existing = 0
 	for child in get_parent().get_children():
 		if child.is_in_group("Enemy"):
@@ -38,13 +34,13 @@ func _spawn_spiders():
 	if to_spawn <= 0:
 		return
 
-	print("[Spawner] Night! %d spiders coming..." % to_spawn)
 	for i in range(to_spawn):
 		var spider = CharacterBody2D.new()
 		var angle = randf() * TAU
-		spider.position = player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(250, 400)
+		spider.position = player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(200, 400)
 		spider.set_script(_enemy_script)
 		get_parent().add_child(spider)
+	print("[Spawner] %d spiders spawned" % to_spawn)
 
 func _find_player() -> Node:
 	var players = get_tree().root.find_children("Player", "", true, false)

@@ -27,13 +27,13 @@ func _draw():
 
 func _biome_color(biome: int) -> Color:
 	match biome:
-		Enums.BiomeType.GRASSLAND: return Color(0.35, 0.55, 0.2)
-		Enums.BiomeType.FOREST: return Color(0.15, 0.3, 0.1)
-		Enums.BiomeType.ROCKY: return Color(0.5, 0.48, 0.45)
-		Enums.BiomeType.MARSH: return Color(0.25, 0.18, 0.3)
-		Enums.BiomeType.SAVANNA: return Color(0.6, 0.55, 0.25)
-		Enums.BiomeType.OCEAN: return Color(0.1, 0.2, 0.5)
-	return Color.GRAY
+		Enums.BiomeType.GRASSLAND: return Color(0.25, 0.28, 0.18)
+		Enums.BiomeType.FOREST: return Color(0.18, 0.2, 0.13)
+		Enums.BiomeType.ROCKY: return Color(0.28, 0.26, 0.22)
+		Enums.BiomeType.MARSH: return Color(0.15, 0.16, 0.12)
+		Enums.BiomeType.SAVANNA: return Color(0.3, 0.3, 0.2)
+		Enums.BiomeType.OCEAN: return Color(0.08, 0.1, 0.18)
+	return Color(0.2, 0.22, 0.15)
 
 func _process(_delta):
 	queue_redraw()

@@ -1,10 +1,9 @@
-# Test player with collision
+# Test player — green circle, WASD
 extends CharacterBody2D
 
 var speed: float = 300.0
 
 func _ready():
-	# Create collision shape in code (avoids scene file format issues)
 	var shape = CircleShape2D.new()
 	shape.radius = 32.0
 	var coll = CollisionShape2D.new()

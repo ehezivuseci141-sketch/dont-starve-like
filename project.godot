@@ -28,6 +28,7 @@ SaveManager="*res://core/save_system.gd"
 DayNightCycle="*res://world/day_night.gd"
 WeatherSystem="*res://world/weather.gd"
 WorldManager="*res://world/world_manager.gd"
+FX="*res://scenes/fx_spawner.gd"
 
 [display]
 

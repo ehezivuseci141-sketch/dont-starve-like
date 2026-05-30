@@ -37,6 +37,7 @@ func pick_up():
 	if _picked: return
 	var p = InventoryManager.add_item(item_id, 1)
 	if p > 0:
+		FX.show(get_parent(), global_position, "+1 %s" % ItemDB.get_item_name(item_id), Color(1, 1, 1))
 		_picked = true
 		queue_free()
 

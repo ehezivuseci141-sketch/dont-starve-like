@@ -83,6 +83,7 @@ func _pick_new_wander(around: Vector2 = Vector2.ZERO):
 
 func take_damage(amount: float):
 	hp -= amount
+	FX.show(get_parent(), global_position - Vector2(0, 30), str(int(amount)), Color(1, 0.3, 0.1))
 	if _sprite: _sprite.modulate = Color.RED
 	await get_tree().create_timer(0.1).timeout
 	if _sprite: _sprite.modulate = Color.WHITE
