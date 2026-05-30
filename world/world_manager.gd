@@ -8,7 +8,7 @@ extends Node
 # 地图尺寸（瓦片数）
 const MAP_WIDTH: int = 256
 const MAP_HEIGHT: int = 256
-const TILE_SIZE: int = 64
+const TILE_SIZE: int = 96
 
 # 地图数据：world[Vector2i] = tile_type (int)
 var world_grid: Dictionary = {}

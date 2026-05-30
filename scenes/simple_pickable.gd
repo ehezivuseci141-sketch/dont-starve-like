@@ -20,7 +20,7 @@ func _ready():
 	var tex_path = "res://assets/sprites/%s.png" % item_id
 	if ResourceLoader.exists(tex_path):
 		sprite.texture = load(tex_path)
-	sprite.scale = Vector2(0.7, 0.7)
+	sprite.scale = Vector2(1.0, 1.0)
 	add_child(sprite)
 
 	# Name label (use a Label node)
