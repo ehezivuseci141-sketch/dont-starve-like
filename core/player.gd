@@ -25,7 +25,8 @@ func _ready():
 	var acoll = CollisionShape2D.new(); acoll.shape = ashape
 	action_area.add_child(acoll); add_child(action_area)
 
-	_sprite = Sprite2D.new(); _sprite.position = Vector2(0, -8); add_child(_sprite)
+	_sprite = Sprite2D.new(); _sprite.position = Vector2(0, -8)
+	_sprite.scale = Vector2(0.7, 0.7); add_child(_sprite)
 	_sprite_load("player_down.png")
 	queue_redraw()
 
