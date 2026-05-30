@@ -12,11 +12,19 @@
 从 https://godotengine.org 下载 **Godot 4.6 标准版**（不要 .NET 版本，60MB）。
 
 ### 2. 配置 Git 代理（重要！人在国内必须配）
+
+先打开你的 Clash Verge 主界面，找到 **端口** 那一栏的数字（通常是 7890、7897 等）。然后把下面命令里的 `你的端口` 换成那个数字：
+
 ```bash
-git config --global http.proxy http://127.0.0.1:7897
-git config --global https.proxy http://127.0.0.1:7897
+git config --global http.proxy http://127.0.0.1:你的端口
+git config --global https.proxy http://127.0.0.1:你的端口
 ```
-（如果代理端口不是 7897，去 Clash Verge 主界面查看实际端口号）
+
+验证是否生效：
+```bash
+git ls-remote https://github.com/ehezivuseci141-sketch/dont-starve-like.git
+```
+如果没报错就说明代理配置成功。
 
 ### 3. 克隆仓库
 ```bash
