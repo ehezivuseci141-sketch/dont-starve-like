@@ -1,0 +1,89 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/torso.png" id="1_torso"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/head.png" id="2_head"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/arm_l.png" id="3_arm_l"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/arm_r.png" id="4_arm_r"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/leg_l.png" id="5_leg_l"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_parts/down/leg_r.png" id="6_leg_r"]
+
+[node name="PlayerRig" type="Node2D"]
+
+[node name="Skeleton2D" type="Skeleton2D" parent="."]
+
+[node name="torso" type="Bone2D" parent="Skeleton2D"]
+position = Vector2(0, 0)
+length = 10.0
+
+[node name="TorsoSprite" type="Sprite2D" parent="Skeleton2D/torso"]
+texture = ExtResource("1_torso")
+centered = true
+
+[node name="head" type="Bone2D" parent="Skeleton2D/torso"]
+position = Vector2(0, -10)
+length = 8.0
+
+[node name="HeadSprite" type="Sprite2D" parent="Skeleton2D/torso/head"]
+texture = ExtResource("2_head")
+centered = true
+
+[node name="head_end" type="Bone2D" parent="Skeleton2D/torso/head"]
+position = Vector2(8, 0)
+length = 1.0
+
+[node name="arm_l" type="Bone2D" parent="Skeleton2D/torso"]
+position = Vector2(-6, -2)
+length = 8.0
+z_index = 2
+
+[node name="ArmLSprite" type="Sprite2D" parent="Skeleton2D/torso/arm_l"]
+texture = ExtResource("3_arm_l")
+centered = true
+
+[node name="arm_l_end" type="Bone2D" parent="Skeleton2D/torso/arm_l"]
+position = Vector2(8, 0)
+length = 1.0
+
+[node name="arm_r" type="Bone2D" parent="Skeleton2D/torso"]
+position = Vector2(6, -2)
+length = 8.0
+z_index = 2
+
+[node name="ArmRSprite" type="Sprite2D" parent="Skeleton2D/torso/arm_r"]
+texture = ExtResource("4_arm_r")
+centered = true
+
+[node name="arm_r_end" type="Bone2D" parent="Skeleton2D/torso/arm_r"]
+position = Vector2(8, 0)
+length = 1.0
+
+[node name="HandSocketR" type="Node2D" parent="Skeleton2D/torso/arm_r/arm_r_end"]
+position = Vector2(0, 0)
+
+[node name="leg_l" type="Bone2D" parent="Skeleton2D/torso"]
+position = Vector2(-3, 10)
+length = 8.0
+z_index = 0
+
+[node name="LegLSprite" type="Sprite2D" parent="Skeleton2D/torso/leg_l"]
+texture = ExtResource("5_leg_l")
+centered = true
+
+[node name="leg_l_end" type="Bone2D" parent="Skeleton2D/torso/leg_l"]
+position = Vector2(8, 0)
+length = 1.0
+
+[node name="leg_r" type="Bone2D" parent="Skeleton2D/torso"]
+position = Vector2(3, 10)
+length = 8.0
+z_index = 0
+
+[node name="LegRSprite" type="Sprite2D" parent="Skeleton2D/torso/leg_r"]
+texture = ExtResource("6_leg_r")
+centered = true
+
+[node name="leg_r_end" type="Bone2D" parent="Skeleton2D/torso/leg_r"]
+position = Vector2(8, 0)
+length = 1.0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]

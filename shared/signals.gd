@@ -13,6 +13,9 @@
 # ============================================================
 extends Node
 
+# UI state flags (kept tiny; avoids cross-module hard references)
+var map_open: bool = false
+
 # ---------- 玩家事件（core → world） ----------
 signal player_moved(position: Vector2, direction: Vector2)
 signal player_picked_up(item_id: String, amount: int)

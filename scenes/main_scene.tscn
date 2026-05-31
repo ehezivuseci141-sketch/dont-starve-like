@@ -1,41 +1,46 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene format=3 uid="uid://clpandsi0aex2"]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
-[ext_resource type="Script" path="res://scenes/camera_follow.gd" id="2_camera"]
-[ext_resource type="Script" path="res://scenes/ground_renderer.gd" id="3_ground"]
-[ext_resource type="Script" path="res://scenes/night_overlay.gd" id="4_night"]
-[ext_resource type="Script" path="res://scenes/hud.gd" id="5_hud"]
-[ext_resource type="Script" path="res://scenes/hotbar.gd" id="6_hotbar"]
-[ext_resource type="Script" path="res://scenes/inventory_panel.gd" id="7_side"]
-[ext_resource type="Script" path="res://scenes/world_spawner.gd" id="8_spawner"]
-[ext_resource type="Script" path="res://scenes/enemy_spawner.gd" id="9_enemy"]
+[ext_resource type="Script" uid="uid://bx45mapv26uu6" path="res://scenes/camera_follow.gd" id="2_camera"]
+[ext_resource type="Script" uid="uid://bgr8l7cqvjfmu" path="res://scenes/ground_renderer.gd" id="3_ground"]
+[ext_resource type="Script" uid="uid://blxk2ny8eg2t0" path="res://scenes/night_overlay.gd" id="4_night"]
+[ext_resource type="Script" uid="uid://bjp2n3hx4wa5p" path="res://scenes/hud.gd" id="5_hud"]
+[ext_resource type="Script" uid="uid://w28k0xbahhq1" path="res://scenes/hotbar.gd" id="6_hotbar"]
+[ext_resource type="Script" uid="uid://dj4477a671j6a" path="res://scenes/inventory_panel.gd" id="7_side"]
+[ext_resource type="Script" uid="uid://bxjxq4ckort02" path="res://scenes/world_spawner.gd" id="8_spawner"]
+[ext_resource type="Script" uid="uid://c4t14q0r0bsx2" path="res://scenes/enemy_spawner.gd" id="9_enemy"]
+[ext_resource type="Script" path="res://scenes/minimap.gd" id="10_minimap"]
 
-[node name="Game" type="Node2D"]
+[node name="Game" type="Node2D" unique_id=982466261]
 
-[node name="GroundRenderer" type="Node2D" parent="."]
+[node name="GroundRenderer" type="Node2D" parent="." unique_id=341381878]
 script = ExtResource("3_ground")
 
-[node name="Camera2D" type="Camera2D" parent="."]
-enabled = true
+[node name="Camera2D" type="Camera2D" parent="." unique_id=216578089]
 script = ExtResource("2_camera")
 
-[node name="WorldSpawner" type="Node2D" parent="."]
+[node name="WorldSpawner" type="Node2D" parent="." unique_id=228220790]
 script = ExtResource("8_spawner")
 
-[node name="EnemySpawner" type="Node2D" parent="."]
+[node name="EnemySpawner" type="Node2D" parent="." unique_id=2061132328]
 script = ExtResource("9_enemy")
 
-[node name="Player" parent="." instance=ExtResource("1_player")]
+[node name="Player" parent="." unique_id=626611462 instance=ExtResource("1_player")]
 position = Vector2(640, 360)
 
-[node name="NightOverlay" type="CanvasLayer" parent="."]
+[node name="NightOverlay" type="CanvasLayer" parent="." unique_id=20179801]
 script = ExtResource("4_night")
 
-[node name="SidePanel" type="CanvasLayer" parent="."]
+[node name="SidePanel" type="CanvasLayer" parent="." unique_id=938879345]
 script = ExtResource("7_side")
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=876114776]
 script = ExtResource("5_hud")
 
-[node name="Hotbar" type="CanvasLayer" parent="."]
+[node name="Hotbar" type="CanvasLayer" parent="." unique_id=1512643962]
 script = ExtResource("6_hotbar")
+
+[node name="MinimapLayer" type="CanvasLayer" parent="."]
+
+[node name="Minimap" type="Control" parent="MinimapLayer"]
+script = ExtResource("10_minimap")

@@ -13,6 +13,8 @@ const TILE_SIZE: int = 96
 # 地图数据：world[Vector2i] = tile_type (int)
 var world_grid: Dictionary = {}
 var biome_grid: Dictionary = {}  # 每个格子的生物群系
+var explored_grid: Dictionary = {}  # 已探索格子：explored_grid[Vector2i] = true
+var last_player_dir: Vector2 = Vector2.DOWN
 
 # 已生成的实体列表
 var spawned_entities: Array = []
@@ -33,6 +35,7 @@ func _ready():
 
 	# 监听昼夜，晚上刷蜘蛛
 	Signals.time_of_day_changed.connect(_on_time_of_day_changed)
+	Signals.player_moved.connect(_on_player_moved)
 
 func _process(delta: float):
 	# 定时刷新可采集物
@@ -49,16 +52,43 @@ func generate_world(seed: int = -1):
 		seed = randi()
 
 	map_generator.generate(self, seed)
+	explored_grid.clear()
 	print("[世界] 地图生成完成，种子: %d" % seed)
 
 func get_tile(world_pos: Vector2) -> int:
 	"""获取某个世界坐标的地形类型"""
 	var grid_pos = world_to_grid(world_pos)
+	ensure_tile(grid_pos)
 	return world_grid.get(grid_pos, 0)
 
 func get_biome(world_pos: Vector2) -> int:
 	var grid_pos = world_to_grid(world_pos)
+	ensure_tile(grid_pos)
 	return biome_grid.get(grid_pos, Enums.BiomeType.GRASSLAND)
+
+func ensure_tile(grid_pos: Vector2i):
+	if world_grid.has(grid_pos):
+		return
+	if map_generator == null:
+		map_generator = MapGenerator.new()
+		add_child(map_generator)
+	map_generator.generate_tile(self, grid_pos)
+
+func ensure_region(min_grid: Vector2i, max_grid: Vector2i):
+	if map_generator == null:
+		map_generator = MapGenerator.new()
+		add_child(map_generator)
+
+	var from_x = mini(min_grid.x, max_grid.x)
+	var to_x = maxi(min_grid.x, max_grid.x)
+	var from_y = mini(min_grid.y, max_grid.y)
+	var to_y = maxi(min_grid.y, max_grid.y)
+
+	for x in range(from_x, to_x + 1):
+		for y in range(from_y, to_y + 1):
+			var grid_pos = Vector2i(x, y)
+			if not world_grid.has(grid_pos):
+				map_generator.generate_tile(self, grid_pos)
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	return Vector2i(
@@ -73,6 +103,17 @@ func grid_to_world(grid_pos: Vector2i) -> Vector2:
 func is_passable(world_pos: Vector2) -> bool:
 	var tile = get_tile(world_pos)
 	return tile != 5  # 5 = OCEAN，不可通行
+
+func mark_explored_at(world_pos: Vector2, radius_tiles: int = 7):
+	var center = world_to_grid(world_pos)
+	ensure_region(center - Vector2i(radius_tiles, radius_tiles), center + Vector2i(radius_tiles, radius_tiles))
+	for x in range(center.x - radius_tiles, center.x + radius_tiles + 1):
+		for y in range(center.y - radius_tiles, center.y + radius_tiles + 1):
+			var gp = Vector2i(x, y)
+			explored_grid[gp] = true
+
+func is_explored(grid_pos: Vector2i) -> bool:
+	return explored_grid.has(grid_pos)
 
 # ----- 实体管理 -----
 
@@ -99,6 +140,10 @@ func _spawn_night_creatures():
 	"""夜晚在玩家周围刷蜘蛛"""
 	# 后续 phase 实现具体逻辑
 	pass
+
+func _on_player_moved(pos: Vector2, _dir: Vector2):
+	mark_explored_at(pos, 7)
+	last_player_dir = _dir
 
 func _respawn_pickables():
 	"""定时刷新浆果、胡萝卜等可采集资源"""

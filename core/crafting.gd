@@ -23,6 +23,27 @@ func _register_all_recipes():
 		"station": "none"
 	})
 	_register({
+		"id": "craft_sword",
+		"name": "剑",
+		"ingredients": {"twigs": 1, "flint": 2, "gold_nugget": 1},
+		"result": {"item_id": "sword", "amount": 1},
+		"station": "none"
+	})
+	_register({
+		"id": "craft_lance",
+		"name": "长枪",
+		"ingredients": {"twigs": 3, "flint": 2, "cut_grass": 1},
+		"result": {"item_id": "lance", "amount": 1},
+		"station": "none"
+	})
+	_register({
+		"id": "craft_fan",
+		"name": "折扇",
+		"ingredients": {"twigs": 2, "cut_grass": 4},
+		"result": {"item_id": "fan", "amount": 1},
+		"station": "none"
+	})
+	_register({
 		"id": "craft_axe",
 		"name": "斧头",
 		"ingredients": {"twigs": 1, "flint": 1},

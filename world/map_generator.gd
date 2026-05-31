@@ -29,12 +29,15 @@ func generate(world: Node, _seed: int):
 	for x in range(world.MAP_WIDTH):
 		for y in range(world.MAP_HEIGHT):
 			var grid_pos = Vector2i(x, y)
-			var elevation = _noise.get_noise_2d(x as float, y as float)
-			var moisture = _moisture_noise.get_noise_2d(x as float, y as float)
-			var biome = _determine_biome(elevation, moisture)
-			var tile = _determine_tile(biome)
-			world.biome_grid[grid_pos] = biome
-			world.world_grid[grid_pos] = tile
+			generate_tile(world, grid_pos)
+
+func generate_tile(world: Node, grid_pos: Vector2i):
+	var elevation = _noise.get_noise_2d(grid_pos.x as float, grid_pos.y as float)
+	var moisture = _moisture_noise.get_noise_2d(grid_pos.x as float, grid_pos.y as float)
+	var biome = _determine_biome(elevation, moisture)
+	var tile = _determine_tile(biome)
+	world.biome_grid[grid_pos] = biome
+	world.world_grid[grid_pos] = tile
 
 func _determine_biome(elevation: float, moisture: float) -> int:
 	if elevation < -0.35:

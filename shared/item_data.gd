@@ -111,6 +111,30 @@ func _register_all_items():
 		"damage": 15.0,
 		"eatable": false
 	})
+	_register({
+		"id": "sword", "name": "剑", "name_en": "Sword",
+		"category": 2,
+		"stack_max": 1,
+		"durability": 80.0,
+		"damage": 22.0,
+		"eatable": false
+	})
+	_register({
+		"id": "lance", "name": "长枪", "name_en": "Lance",
+		"category": 2,
+		"stack_max": 1,
+		"durability": 70.0,
+		"damage": 26.0,
+		"eatable": false
+	})
+	_register({
+		"id": "fan", "name": "折扇", "name_en": "Folding Fan",
+		"category": 2,
+		"stack_max": 1,
+		"durability": 60.0,
+		"damage": 14.0,
+		"eatable": false
+	})
 
 	# ===== 工具 =====
 	_register({
