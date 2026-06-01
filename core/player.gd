@@ -1,10 +1,16 @@
 extends CharacterBody2D
+class_name PlayerController
 
 @export var move_speed: float = 200.0
 @export var strategic_speed_multiplier: float = 1.35
+@export var acceleration: float = 2600.0
+@export var friction: float = 3200.0
+@export var turn_acceleration: float = 3800.0
 
 # Full skeleton rig: uses a dedicated scene with Skeleton2D+Bone2D.
-const USE_SKELETON_RIG: bool = true
+const USE_SKELETON_RIG: bool = false
+enum PlayerState {IDLE, WALK, ATTACK, HURT, DEATH, DODGE}
+var _state: int = PlayerState.IDLE
 var _last_direction: Vector2 = Vector2.DOWN
 var _facing_right: bool = true
 var _sprite: Sprite2D
@@ -19,6 +25,9 @@ var action_area: Area2D
 var _attack_cooldown: float = 0.0
 const ATTACK_CD: float = 0.4
 var _attack_slash: float = 0.0
+var _hurt_timer: float = 0.0
+var _terrain_damage_timer: float = 0.0
+var _dead: bool = false
 var _weapon_anim_attack: float = 0.0
 var _weapon_anim_gather: float = 0.0
 const WEAPON_ATTACK_TIME: float = 0.16
@@ -39,6 +48,20 @@ const ANIM_STEP_TIME: float = 0.18
 const PLAYER_PIXEL_SIZE: float = 68.0
 const SPRITE_BASE_Y: float = -8.0
 
+# Dodge / Roll
+var _dodging: bool = false
+var _dodge_dir: Vector2 = Vector2.ZERO
+var _dodge_timer: float = 0.0
+var _dodge_cooldown: float = 0.0
+var _invincible: bool = false
+const DODGE_SPEED: float = 600.0
+const DODGE_DURATION: float = 0.18
+const DODGE_COOLDOWN: float = 0.8
+# Double-tap detection
+var _last_tap_dir: String = ""
+var _last_tap_time: float = 0.0
+const DOUBLE_TAP_WINDOW: float = 0.3
+
 # Skeleton rig (scene-based; down/front only for now)
 var _rig_enabled: bool = false
 var _rig_root: Node2D
@@ -50,6 +73,15 @@ var _rig_walk_t: float = 0.0
 var _hand_socket_r: Node2D
 
 func _ready():
+	name = "Player"
+	z_index = 5
+	collision_layer = 1
+	collision_mask = 1
+	add_to_group("Player")
+	Signals.player_died.connect(_on_player_died)
+	if global_position == Vector2.ZERO:
+		global_position = Vector2(640, 360)
+
 	var shape = CircleShape2D.new(); shape.radius = 20.0
 	var coll = CollisionShape2D.new(); coll.shape = shape; add_child(coll)
 
@@ -62,6 +94,8 @@ func _ready():
 	_sprite = Sprite2D.new(); _sprite.position = Vector2(0, SPRITE_BASE_Y)
 	_sprite.scale = Vector2(0.7, 0.7); add_child(_sprite)
 	_sprite_load("player_down.png")
+	if _sprite.texture == null:
+		_sprite.visible = false
 
 	if USE_SKELETON_RIG:
 		_setup_skeleton_rig()
@@ -110,11 +144,38 @@ func _draw():
 		draw_arc(d * 18, 35.0, d.angle() - 0.5, d.angle() + 0.5, 8, Color(1,1,1,a*0.7), 3.0)
 
 func _physics_process(delta: float):
+	if _dead:
+		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
+		move_and_slide()
+		_update_animation(delta)
+		queue_redraw()
+		return
+
+	_hurt_timer = maxf(0.0, _hurt_timer - delta)
+	_apply_terrain_hazards(delta)
 	if _camera == null:
 		var cams = get_tree().root.find_children("*", "Camera2D", true, false)
 		if cams.size() > 0: _camera = cams[0]
 
 	var is_strat = _camera != null and _camera.has_method("is_strategic") and _camera.is_strategic()
+
+	# --- Dodge / Roll ---
+	_dodge_cooldown = maxf(0.0, _dodge_cooldown - delta)
+	if _dodging:
+		_state = PlayerState.DODGE
+		_dodge_timer -= delta
+		velocity = _dodge_dir * DODGE_SPEED
+		_invincible = true
+		if _dodge_timer <= 0.0:
+			_dodging = false; _invincible = false
+			_dodge_timer = 0.0
+		move_and_slide()
+		if _moving:
+			Signals.player_moved.emit(global_position, _last_direction)
+		_update_animation(delta)
+		_update_rig(delta)
+		queue_redraw()
+		return  # Skip normal input during dodge
 
 	if is_strat:
 		if _has_target:
@@ -127,7 +188,8 @@ func _physics_process(delta: float):
 			else:
 				var dir = to.normalized()
 				_set_move_direction(dir)
-				velocity = dir * move_speed * strategic_speed_multiplier
+				var target_vel = dir * move_speed * _terrain_speed_multiplier() * strategic_speed_multiplier
+				velocity = _steer_velocity(target_vel, delta)
 		else:
 			_set_move_direction(Vector2.ZERO)
 	else:
@@ -137,13 +199,14 @@ func _physics_process(delta: float):
 		var dir = Vector2(dx, dy)
 		_set_move_direction(dir)
 
+	_attack_cooldown = maxf(0, _attack_cooldown - delta)
+	if _attack_slash > 0: _attack_slash -= delta
+	_refresh_state()
 	_update_animation(delta)
 	_update_weapon_visual()
 	_update_weapon_animation(delta)
 	_update_rig(delta)
 
-	_attack_cooldown = maxf(0, _attack_cooldown - delta)
-	if _attack_slash > 0: _attack_slash -= delta
 	move_and_slide()
 	if _moving:
 		Signals.player_moved.emit(global_position, _last_direction)
@@ -155,17 +218,40 @@ func set_move_target(pos: Vector2):
 
 func _set_move_direction(input_dir: Vector2):
 	if input_dir == Vector2.ZERO:
-		_moving = false
-		velocity = Vector2.ZERO
+		velocity = velocity.move_toward(Vector2.ZERO, friction * get_physics_process_delta_time())
+		if velocity.length() < 2.0:
+			velocity = Vector2.ZERO
+			_moving = false
 		return
 
 	var dir = input_dir.normalized()
+	var target = dir * move_speed * _terrain_speed_multiplier()
+	velocity = _steer_velocity(target, get_physics_process_delta_time())
 	_moving = true
-	velocity = dir * move_speed
 	_last_direction = dir
 	_anim_dir = _direction_to_anim(dir)
 	if abs(dir.x) > 0.05:
 		_facing_right = dir.x > 0
+
+func _steer_velocity(target: Vector2, delta: float) -> Vector2:
+	var accel = acceleration
+	if velocity.length() > 1.0 and target.length() > 1.0 and velocity.normalized().dot(target.normalized()) < 0.35:
+		accel = turn_acceleration
+	return velocity.move_toward(target, accel * delta)
+
+func _refresh_state():
+	if _dead:
+		_state = PlayerState.DEATH
+	elif _hurt_timer > 0.0:
+		_state = PlayerState.HURT
+	elif _attack_slash > 0.0:
+		_state = PlayerState.ATTACK
+	elif _dodging:
+		_state = PlayerState.DODGE
+	elif _moving:
+		_state = PlayerState.WALK
+	else:
+		_state = PlayerState.IDLE
 
 func _direction_to_anim(dir: Vector2) -> String:
 	var angle = dir.angle()
@@ -190,6 +276,17 @@ func _direction_to_anim(dir: Vector2) -> String:
 	return "down"
 
 func _update_animation(delta: float):
+	if _state == PlayerState.DEATH:
+		_sprite_load("player_%s.png" % _anim_dir)
+		_sprite.modulate = Color(0.45, 0.45, 0.45, 1.0)
+		_sprite.rotation = lerpf(_sprite.rotation, PI * 0.5, minf(1.0, delta * 8.0))
+		return
+	if _state == PlayerState.HURT:
+		_sprite_load("player_%s.png" % _anim_dir)
+		_sprite.modulate = Color(1.0, 0.42, 0.35, 1.0)
+		_sprite.position = Vector2(0, SPRITE_BASE_Y) + Vector2(randf_range(-1.5, 1.5), 0)
+		return
+	_sprite.modulate = Color.WHITE
 	if _moving:
 		_anim_timer += delta
 		if _anim_timer >= ANIM_STEP_TIME:
@@ -353,6 +450,8 @@ func _ease_in_out_quad(t: float) -> float:
 	return 1.0 - pow(-2.0 * x + 2.0, 2.0) / 2.0
 
 func _input(event: InputEvent):
+	if _dead:
+		return
 	# Mouse: click-to-move (strategic) or attack (action)
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _camera and _camera.has_method("is_strategic") and _camera.is_strategic():
@@ -363,22 +462,119 @@ func _input(event: InputEvent):
 	if event.is_action_pressed("interact"): _try_interact()
 	if event.is_action_pressed("attack"): _do_attack()
 
+	# Dodge input
+	if event is InputEventKey and event.pressed:
+		# Shift + direction
+		if event.shift_pressed and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+			_try_dodge(_get_dodge_dir_from_key(event.keycode))
+		# Double-tap direction
+		var tap = _key_to_dir_name(event.keycode)
+		if tap != "":
+			var now = Time.get_ticks_msec() / 1000.0
+			if _last_tap_dir == tap and (now - _last_tap_time) < DOUBLE_TAP_WINDOW:
+				_try_dodge(_get_dodge_dir_from_key(event.keycode))
+			_last_tap_dir = tap; _last_tap_time = now
+		# Hotbar / drop / eat
+		if event.keycode in [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5]:
+			InventoryManager.select_slot(event.keycode - KEY_1)
+		if event.keycode == KEY_Q:
+			InventoryManager.drop_item(InventoryManager.selected_slot, global_position)
+		if event.keycode == KEY_F:
+			var item = InventoryManager.get_selected_item()
+			if not item.is_empty() and ItemDB.is_eatable(item["item_id"]):
+				SurvivalManager.eat(item["item_id"])
+				InventoryManager.remove_item(item["item_id"], 1)
+
+# ========= DODGE HELPERS =========
+func _get_dodge_dir_from_key(keycode: int) -> Vector2:
+	match keycode:
+		KEY_W, KEY_UP:     return Vector2(0, -1)
+		KEY_S, KEY_DOWN:   return Vector2(0, 1)
+		KEY_A, KEY_LEFT:   return Vector2(-1, 0)
+		KEY_D, KEY_RIGHT:  return Vector2(1, 0)
+		_:                  return _last_direction
+
+func _key_to_dir_name(keycode: int) -> String:
+	match keycode:
+		KEY_W, KEY_UP:     return "up"
+		KEY_S, KEY_DOWN:   return "down"
+		KEY_A, KEY_LEFT:   return "left"
+		KEY_D, KEY_RIGHT:  return "right"
+		_:                  return ""
+
+func _try_dodge(dir: Vector2):
+	if _dodge_cooldown > 0.0 or _dodging:
+		return
+	var d = dir.normalized()
+	if d == Vector2.ZERO:
+		d = _last_direction.normalized()
+	_dodge_dir = d
+	_dodge_timer = DODGE_DURATION
+	_dodge_cooldown = DODGE_COOLDOWN
+	_dodging = true
+	_state = PlayerState.DODGE
+	_moving = true
+	_last_direction = d
+	if d.x != 0: _facing_right = d.x > 0
+	_anim_dir = _direction_to_anim(d)
+
 func _do_attack():
 	if _attack_cooldown > 0: return
 	_attack_cooldown = ATTACK_CD; _attack_slash = 0.15
+	_state = PlayerState.ATTACK
 	_weapon_anim_attack = WEAPON_ATTACK_TIME
 	var dmg = 3.0; var sel = InventoryManager.get_selected_item()
 	if not sel.is_empty(): dmg = ItemDB.get_item(sel["item_id"]).get("damage", 3.0)
-	var atk = _last_direction; if atk == Vector2.ZERO: atk = Vector2(1 if _facing_right else -1, 0)
+	# Attack direction = mouse cursor
+	var atk = (get_global_mouse_position() - global_position).normalized()
+	if atk == Vector2.ZERO: atk = Vector2(1 if _facing_right else -1, 0)
+	_facing_right = atk.x > 0; _last_direction = atk
+	_anim_dir = _direction_to_anim(atk)
 	var hit_any = false
 	if action_area:
 		for body in action_area.get_overlapping_bodies():
-			if body.is_in_group("Enemy") and atk.dot(body.global_position - global_position) > 0.3:
+			if body.is_in_group("Enemy") and _facing_dot(body.global_position, atk) > 0.3:
 				if body.has_method("take_damage"):
 					body.take_damage(dmg)
 					hit_any = true
 	if hit_any:
 		_consume_selected_durability(1)
+
+func take_damage(amount: float):
+	if _invincible or _dead:
+		return
+	_hurt_timer = 0.18
+	_state = PlayerState.HURT
+	SurvivalManager.take_damage(amount)
+
+func _terrain_speed_multiplier() -> float:
+	if WorldManager == null:
+		return 1.0
+	return WorldManager.get_terrain_speed_multiplier(global_position)
+
+func _apply_terrain_hazards(delta: float):
+	if WorldManager == null:
+		return
+	var dps = WorldManager.get_terrain_damage_per_second(global_position)
+	if dps <= 0.0:
+		_terrain_damage_timer = 0.0
+		return
+	_terrain_damage_timer += delta
+	if _terrain_damage_timer >= 0.5:
+		_terrain_damage_timer = 0.0
+		take_damage(dps * 0.5)
+
+func _facing_dot(target_pos: Vector2, attack_dir: Vector2) -> float:
+	var to_target = target_pos - global_position
+	if to_target.length() <= 0.01 or attack_dir.length() <= 0.01:
+		return 1.0
+	return attack_dir.normalized().dot(to_target.normalized())
+
+func _on_player_died(_cause: String):
+	_dead = true
+	_state = PlayerState.DEATH
+	_has_target = false
+	velocity = Vector2.ZERO
 
 func _try_interact():
 	if action_area:

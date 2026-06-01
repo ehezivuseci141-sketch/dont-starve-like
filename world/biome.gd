@@ -26,7 +26,7 @@ func _register_biomes():
 		"color": Color(0.15, 0.35, 0.10),        # 深绿
 		"dark_color": Color(0.08, 0.20, 0.05),
 		"ground_texture": "forest",
-		"pickables": ["log", "twigs", "berries", "cut_grass"],
+		"pickables": ["log", "twigs", "berries", "cut_grass", "spirit_grass"],
 		"creatures": ["spider", "pigman"],
 		"structures": ["spider_nest"],
 		"music": "forest"
@@ -36,7 +36,7 @@ func _register_biomes():
 		"color": Color(0.55, 0.55, 0.50),        # 灰色
 		"dark_color": Color(0.35, 0.35, 0.30),
 		"ground_texture": "rocky",
-		"pickables": ["rocks", "flint", "gold_nugget"],
+		"pickables": ["rocks", "flint", "gold_nugget", "spirit_stone"],
 		"creatures": [],
 		"structures": ["boulder"],
 		"music": "rocky"
@@ -56,7 +56,7 @@ func _register_biomes():
 		"color": Color(0.70, 0.65, 0.30),        # 枯黄
 		"dark_color": Color(0.45, 0.40, 0.18),
 		"ground_texture": "savanna",
-		"pickables": ["cut_grass", "carrot", "raw_meat"],
+		"pickables": ["cut_grass", "carrot", "raw_meat", "spirit_grass"],
 		"creatures": ["beefalo"],
 		"structures": [],
 		"music": "savanna"
@@ -70,6 +70,16 @@ func _register_biomes():
 		"creatures": [],
 		"structures": [],
 		"music": "ocean"
+	}
+
+	biome_configs[Enums.BiomeType.LAVA] = {
+		"color": Color(0.22, 0.05, 0.035),
+		"dark_color": Color(0.08, 0.015, 0.012),
+		"ground_texture": "lava",
+		"pickables": ["rocks", "flint"],
+		"creatures": ["night_stalker"],
+		"structures": ["lava_pool", "burnt_tree"],
+		"music": "lava"
 	}
 
 # ----- API -----

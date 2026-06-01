@@ -20,7 +20,8 @@ enum BiomeType {
 	ROCKY = 2,
 	MARSH = 3,
 	SAVANNA = 4,
-	OCEAN = 5
+	OCEAN = 5,
+	LAVA = 6
 }
 
 # ---------- 一天中的时段 ----------
@@ -97,4 +98,5 @@ static func biome_name(b: BiomeType) -> String:
 		BiomeType.MARSH: return "沼泽"
 		BiomeType.SAVANNA: return "稀树草原"
 		BiomeType.OCEAN: return "海洋"
+		BiomeType.LAVA: return "岩浆区"
 	return "未知"

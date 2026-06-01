@@ -1,5 +1,6 @@
 # HUD — Four-corner layout, using rounded Panel bars
 extends CanvasLayer
+class_name UIManager
 
 # Top-left
 var _health_bg: Panel

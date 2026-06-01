@@ -55,6 +55,20 @@ func _register_all_items():
 		"fuel_value": 0.0,
 		"eatable": false
 	})
+	_register({
+		"id": "spirit_grass", "name": "灵草", "name_en": "Spirit Grass",
+		"category": 0,
+		"stack_max": 40,
+		"fuel_value": 8.0,
+		"eatable": false
+	})
+	_register({
+		"id": "spirit_stone", "name": "灵石", "name_en": "Spirit Stone",
+		"category": 0,
+		"stack_max": 40,
+		"fuel_value": 0.0,
+		"eatable": false
+	})
 
 	# ===== 食物 =====
 	_register({
@@ -165,6 +179,20 @@ func _register_all_items():
 		"stack_max": 1,
 		"fuel_max": 120.0,
 		"light_radius": 200.0,
+		"eatable": false
+	})
+	_register({
+		"id": "torch", "name": "火把", "name_en": "Torch",
+		"category": 4,
+		"stack_max": 1,
+		"fuel_max": 75.0,
+		"light_radius": 150.0,
+		"eatable": false
+	})
+	_register({
+		"id": "snare_trap", "name": "捕兽夹", "name_en": "Snare Trap",
+		"category": 4,
+		"stack_max": 10,
 		"eatable": false
 	})
 

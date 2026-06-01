@@ -10,6 +10,12 @@ const MAP_WIDTH: int = 256
 const MAP_HEIGHT: int = 256
 const TILE_SIZE: int = 96
 
+const REGION_TAOYUAN: String = "taoyuan"
+const REGION_QINGQIU: String = "qingqiu"
+const REGION_WATER: String = "water"
+const REGION_WASTELAND: String = "wasteland"
+const REGION_WILD: String = "wild"
+
 # 地图数据：world[Vector2i] = tile_type (int)
 var world_grid: Dictionary = {}
 var biome_grid: Dictionary = {}  # 每个格子的生物群系
@@ -23,11 +29,13 @@ var spawned_entities: Array = []
 var _respawn_timer: float = 0.0
 const RESPAWN_INTERVAL: float = 120.0  # 每 2 分钟刷新一波
 
-@onready var map_generator: MapGenerator = $MapGenerator if has_node("MapGenerator") else null
+const MAP_GENERATOR_SCRIPT: Script = preload("res://world/map_generator.gd")
+
+@onready var map_generator: Node = $MapGenerator if has_node("MapGenerator") else null
 
 func _ready():
 	if map_generator == null:
-		map_generator = MapGenerator.new()
+		map_generator = MAP_GENERATOR_SCRIPT.new()
 		add_child(map_generator)
 
 	# 生成世界地图
@@ -52,8 +60,21 @@ func generate_world(seed: int = -1):
 		seed = randi()
 
 	map_generator.generate(self, seed)
+	if world_grid.is_empty() or biome_grid.is_empty():
+		_generate_fallback_world()
 	explored_grid.clear()
-	print("[世界] 地图生成完成，种子: %d" % seed)
+	print("[WorldGenerator] seed=%d terrain_tiles=%d biome_tiles=%d" % [seed, world_grid.size(), biome_grid.size()])
+	_debug_print_biome_counts()
+
+func _generate_fallback_world():
+	world_grid.clear()
+	biome_grid.clear()
+	for x in range(MAP_WIDTH):
+		for y in range(MAP_HEIGHT):
+			var gp = Vector2i(x, y)
+			world_grid[gp] = 1
+			biome_grid[gp] = Enums.BiomeType.GRASSLAND
+	print("[WorldGenerator] fallback grass world generated")
 
 func get_tile(world_pos: Vector2) -> int:
 	"""获取某个世界坐标的地形类型"""
@@ -70,13 +91,13 @@ func ensure_tile(grid_pos: Vector2i):
 	if world_grid.has(grid_pos):
 		return
 	if map_generator == null:
-		map_generator = MapGenerator.new()
+		map_generator = MAP_GENERATOR_SCRIPT.new()
 		add_child(map_generator)
 	map_generator.generate_tile(self, grid_pos)
 
 func ensure_region(min_grid: Vector2i, max_grid: Vector2i):
 	if map_generator == null:
-		map_generator = MapGenerator.new()
+		map_generator = MAP_GENERATOR_SCRIPT.new()
 		add_child(map_generator)
 
 	var from_x = mini(min_grid.x, max_grid.x)
@@ -103,6 +124,74 @@ func grid_to_world(grid_pos: Vector2i) -> Vector2:
 func is_passable(world_pos: Vector2) -> bool:
 	var tile = get_tile(world_pos)
 	return tile != 5  # 5 = OCEAN，不可通行
+
+func get_terrain_speed_multiplier(world_pos: Vector2) -> float:
+	var biome = get_biome(world_pos)
+	if biome == Enums.BiomeType.MARSH:
+		return 0.78
+	return 1.0
+
+func get_terrain_damage_per_second(world_pos: Vector2) -> float:
+	var biome = get_biome(world_pos)
+	if biome == Enums.BiomeType.LAVA:
+		return 8.0
+	return 0.0
+
+func get_region_id(world_pos: Vector2) -> String:
+	var grid_pos = world_to_grid(world_pos)
+	var center = Vector2(MAP_WIDTH / 2.0, MAP_HEIGHT / 2.0)
+	var rel = Vector2(grid_pos.x, grid_pos.y) - center
+	var edge_margin = mini(
+		mini(grid_pos.x, MAP_WIDTH - 1 - grid_pos.x),
+		mini(grid_pos.y, MAP_HEIGHT - 1 - grid_pos.y)
+	)
+	if rel.length() < 26.0:
+		return REGION_TAOYUAN
+	if edge_margin < 24:
+		return REGION_WASTELAND
+	if rel.y < -36.0:
+		return REGION_QINGQIU
+	if rel.y > 44.0:
+		return REGION_WATER
+	return REGION_WILD
+
+func get_region_name(region_id: String) -> String:
+	if region_id == REGION_TAOYUAN:
+		return "桃源村"
+	if region_id == REGION_QINGQIU:
+		return "青丘"
+	if region_id == REGION_WATER:
+		return "水域"
+	if region_id == REGION_WASTELAND:
+		return "荒野"
+	return "郊野"
+
+func get_region_color(region_id: String) -> Color:
+	if region_id == REGION_TAOYUAN:
+		return Color(0.24, 0.36, 0.18)
+	if region_id == REGION_QINGQIU:
+		return Color(0.12, 0.28, 0.18)
+	if region_id == REGION_WATER:
+		return Color(0.08, 0.18, 0.30)
+	if region_id == REGION_WASTELAND:
+		return Color(0.32, 0.25, 0.20)
+	return Color(0.18, 0.26, 0.16)
+
+func is_danger_region(region_id: String) -> bool:
+	return region_id == REGION_WASTELAND
+
+func get_biome_display_name(world_pos: Vector2) -> String:
+	return Enums.biome_name(get_biome(world_pos))
+
+func _debug_print_biome_counts():
+	var counts: Dictionary = {}
+	for gp in biome_grid:
+		var biome = biome_grid[gp]
+		counts[biome] = int(counts.get(biome, 0)) + 1
+	var parts: Array[String] = []
+	for biome in counts:
+		parts.append("%s=%d" % [Enums.biome_name(biome), counts[biome]])
+	print("[WorldGenerator] biome_counts %s" % ", ".join(parts))
 
 func mark_explored_at(world_pos: Vector2, radius_tiles: int = 7):
 	var center = world_to_grid(world_pos)
@@ -171,19 +260,18 @@ func _respawn_pickables():
 
 func _get_random_pickable_for_biome(biome: int) -> String:
 	var pool: Array = []
-	match biome:
-		Enums.BiomeType.FOREST:
-			pool = ["berries", "twigs", "log"]
-		Enums.BiomeType.GRASSLAND:
-			pool = ["carrot", "cut_grass", "berries"]
-		Enums.BiomeType.ROCKY:
-			pool = ["rocks", "flint", "gold_nugget"]
-		Enums.BiomeType.MARSH:
-			pool = ["cut_grass", "twigs"]
-		Enums.BiomeType.SAVANNA:
-			pool = ["cut_grass", "carrot", "raw_meat"]
-		_:
-			pool = ["twigs", "cut_grass"]
+	if biome == Enums.BiomeType.FOREST:
+		pool = ["berries", "twigs", "log", "spirit_grass"]
+	elif biome == Enums.BiomeType.GRASSLAND:
+		pool = ["carrot", "cut_grass", "berries"]
+	elif biome == Enums.BiomeType.ROCKY:
+		pool = ["rocks", "flint", "gold_nugget", "spirit_stone"]
+	elif biome == Enums.BiomeType.MARSH:
+		pool = ["cut_grass", "twigs"]
+	elif biome == Enums.BiomeType.SAVANNA:
+		pool = ["cut_grass", "carrot", "raw_meat", "spirit_grass"]
+	else:
+		pool = ["twigs", "cut_grass"]
 
 	if pool.is_empty():
 		return ""

@@ -4,6 +4,7 @@
 # 包含所有合成配方，支持新增配方
 # ============================================================
 extends Node
+class_name CraftingSystem
 
 # 所有配方
 # 格式：recipe_id → {name, ingredients: {item_id: amount}, result: {item_id, amount}, station}
@@ -62,6 +63,20 @@ func _register_all_recipes():
 		"name": "火堆",
 		"ingredients": {"cut_grass": 3, "log": 2},
 		"result": {"item_id": "campfire", "amount": 1},
+		"station": "none"
+	})
+	_register({
+		"id": "craft_torch",
+		"name": "火把",
+		"ingredients": {"cut_grass": 2, "twigs": 1},
+		"result": {"item_id": "torch", "amount": 1},
+		"station": "none"
+	})
+	_register({
+		"id": "craft_snare_trap",
+		"name": "捕兽夹",
+		"ingredients": {"twigs": 3, "cut_grass": 2},
+		"result": {"item_id": "snare_trap", "amount": 1},
 		"station": "none"
 	})
 	# ==== 烹饪（需要火堆）====

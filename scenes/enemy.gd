@@ -1,5 +1,5 @@
-# Spider enemy with sprite
 extends CharacterBody2D
+class_name NightStalkerEnemy
 
 var hp: float = 15.0
 var max_hp: float = 15.0
@@ -13,6 +13,8 @@ var _wander_timer: float = 0.0
 var _sprite: Sprite2D
 var _hp_bar_bg: ColorRect
 var _hp_bar_fill: ColorRect
+var _knockback: Vector2 = Vector2.ZERO
+var _hurt_timer: float = 0.0
 
 func _ready():
 	add_to_group("Enemy")
@@ -72,9 +74,19 @@ func _physics_process(delta: float):
 		2:
 			velocity = Vector2.ZERO
 			if _attack_timer <= 0.0:
-				SurvivalManager.take_damage(attack_damage)
+				if player.has_method("take_damage"):
+					player.take_damage(attack_damage)
+				else:
+					SurvivalManager.take_damage(attack_damage)
+				Signals.entity_attacked_player.emit("spider", attack_damage)
 				_attack_timer = attack_cooldown
 
+	if _knockback.length() > 1.0:
+		velocity += _knockback
+		_knockback = _knockback.move_toward(Vector2.ZERO, 900.0 * delta)
+	_hurt_timer = maxf(0.0, _hurt_timer - delta)
+	if _sprite:
+		_sprite.modulate = Color(1.0, 0.35, 0.25) if _hurt_timer > 0.0 else Color.WHITE
 	move_and_slide()
 
 func _pick_new_wander(around: Vector2 = Vector2.ZERO):
@@ -83,10 +95,11 @@ func _pick_new_wander(around: Vector2 = Vector2.ZERO):
 
 func take_damage(amount: float):
 	hp -= amount
+	_hurt_timer = 0.14
+	var player = _find_player()
+	if player != null:
+		_knockback = (global_position - player.global_position).normalized() * 180.0
 	FX.show(get_parent(), global_position - Vector2(0, 30), str(int(amount)), Color(1, 0.3, 0.1))
-	if _sprite: _sprite.modulate = Color.RED
-	await get_tree().create_timer(0.1).timeout
-	if _sprite: _sprite.modulate = Color.WHITE
 	if hp <= 0:
 		die()
 

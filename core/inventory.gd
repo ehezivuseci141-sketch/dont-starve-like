@@ -4,6 +4,7 @@
 # 支持：添加/移除/堆叠/选择/丢弃
 # ============================================================
 extends Node
+class_name InventorySystem
 
 # 背包槽位数量
 const DEFAULT_SLOTS: int = 15

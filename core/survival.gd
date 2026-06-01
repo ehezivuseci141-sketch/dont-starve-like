@@ -1,5 +1,6 @@
 # Survival stats (hunger/health/sanity)
 extends Node
+class_name SurvivalFramework
 
 var hunger: float = 100.0
 var health: float = 100.0
@@ -25,6 +26,7 @@ func _process(delta: float):
 	# At night: darkness hurts unless near campfire
 	if DayNightCycle.is_nighttime():
 		if not _near_campfire():
+			modify_sanity(-NIGHT_SANITY_DRAIN * delta)
 			modify_health(-1.5 * delta)  # darkness damages
 	# During day: slow recovery
 	elif DayNightCycle.is_daytime():

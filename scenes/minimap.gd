@@ -1,5 +1,6 @@
 # Simple minimap (nearby tiles + player + resources)
 extends Control
+class_name MiniMapSystem
 
 const SMALL_SIZE: Vector2 = Vector2(190, 190)
 const LARGE_SIZE: Vector2 = Vector2(680, 680)
@@ -180,6 +181,22 @@ func _draw():
 		var p2 = top_left + Vector2((dd.x + draw_range) * cell + cell * 0.5, (dd.y + draw_range) * cell + cell * 0.5)
 		draw_circle(p2, maxf(1.5, cell * 0.18), _resource_color(n))
 
+	var creatures = get_tree().root.find_children("*", "CharacterBody2D", true, false)
+	for cnode in creatures:
+		if not cnode.is_in_group("Enemy") and not cnode.is_in_group("Creature"):
+			continue
+		if not (cnode is Node2D):
+			continue
+		var cgp = WorldManager.world_to_grid(cnode.global_position)
+		if not WorldManager.is_explored(cgp):
+			continue
+		var cd = cgp - map_center
+		if abs(cd.x) > draw_range or abs(cd.y) > draw_range:
+			continue
+		var cp = top_left + Vector2((cd.x + draw_range) * cell + cell * 0.5, (cd.y + draw_range) * cell + cell * 0.5)
+		var col = Color(0.95, 0.75, 0.38) if cnode.is_in_group("Creature") else Color(0.95, 0.18, 0.14)
+		draw_circle(cp, maxf(1.8, cell * 0.20), col)
+
 	# Player marker
 	var player_dd = center_grid - map_center
 	var player_px: Variant = null
@@ -268,8 +285,10 @@ func _resource_color(n: Node) -> Color:
 			return Color(0.40, 0.25, 0.12)
 		"rocks", "flint":
 			return Color(0.70, 0.70, 0.72)
-		"gold_nugget":
+		"gold_nugget", "spirit_stone":
 			return Color(1.0, 0.85, 0.10)
+		"spirit_grass":
+			return Color(0.35, 1.0, 0.62)
 		"berries":
 			return Color(0.92, 0.20, 0.28)
 		"carrot":
@@ -287,6 +306,7 @@ func _biome_color(biome: int) -> Color:
 		Enums.BiomeType.MARSH: return Color(0.14, 0.18, 0.14)
 		Enums.BiomeType.SAVANNA: return Color(0.30, 0.29, 0.18)
 		Enums.BiomeType.OCEAN: return Color(0.06, 0.09, 0.16)
+		Enums.BiomeType.LAVA: return Color(0.36, 0.06, 0.03)
 	return Color(0.22, 0.30, 0.18)
 
 func _find_player() -> Node:
